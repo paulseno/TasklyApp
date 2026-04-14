@@ -22,28 +22,58 @@ public partial class MainPage : ContentPage
             await Shell.Current.Navigation.PushAsync(new EditPage(selected, isFromCompleted: false));
     }
 
-    private void QuickCompleteItem(object sender, EventArgs e)
+    private async void QuickCompleteItem(object sender, EventArgs e)
     {
         if (sender is Button btn && int.TryParse(btn.ClassId, out int id))
         {
             var item = AppService.TodoItems.FirstOrDefault(t => t.Id == id);
-            if (item != null)
+            if (item == null) return;
+
+            try
             {
-                AppService.TodoItems.Remove(item);
-                item.IsCompleted = true;
-                AppService.CompletedItems.Add(item);
+                var response = await AppService.Api.ChangeStatusAsync(item.Id, "inactive");
+                if (response.Status == 200)
+                {
+                    AppService.TodoItems.Remove(item);
+                    item.IsCompleted = true;
+                    AppService.CompletedItems.Add(item);
+                }
+                else
+                {
+                    await DisplayAlert("Error", response.Message, "OK");
+                }
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", $"Could not connect to server: {ex.Message}", "OK");
             }
         }
         UpdateEmptyState();
     }
 
-    private void DeleteToDoItem(object sender, EventArgs e)
+    private async void DeleteToDoItem(object sender, EventArgs e)
     {
         if (sender is Button btn && int.TryParse(btn.ClassId, out int id))
         {
             var item = AppService.TodoItems.FirstOrDefault(t => t.Id == id);
-            if (item != null)
-                AppService.TodoItems.Remove(item);
+            if (item == null) return;
+
+            try
+            {
+                var response = await AppService.Api.DeleteItemAsync(item.Id);
+                if (response.Status == 200)
+                {
+                    AppService.TodoItems.Remove(item);
+                }
+                else
+                {
+                    await DisplayAlert("Error", response.Message, "OK");
+                }
+            }
+            catch (Exception ex)
+            {
+                await DisplayAlert("Error", $"Could not connect to server: {ex.Message}", "OK");
+            }
         }
         UpdateEmptyState();
     }
